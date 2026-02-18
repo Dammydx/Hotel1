@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send, Car, Plane } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import supabase from '../lib/supabase';
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: '',
+interface SiteSettings {
+  map_embed_url?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
+const Contact: React.FC = () => {
+  const location = useLocation();
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     subject: '',
+    category: 'General',
     message: ''
   });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 60 },
@@ -24,52 +39,77 @@ const Contact = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase.from('site_settings').select('*').limit(1).single();
+      setSettings(data || {});
+    };
+    fetch();
+
+    // Prefill subject from location state (from detail pages)
+    if (location.state?.subject) {
+      setForm(prev => ({ ...prev, subject: location.state.subject }));
+    }
+  }, [location.state]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    setStatus('loading');
+    setError(null);
+
+    // Validation
+    if (!form.first_name || !form.email || !form.message) {
+      setStatus('error');
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    const { error } = await supabase.from('contact_messages').insert([form]);
+    if (error) {
+      setStatus('error');
+      setError(error.message || 'Failed to send message');
+      return;
+    }
+
+    setStatus('success');
+    setForm({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      subject: '',
+      category: 'General',
+      message: ''
+    });
+
+    setTimeout(() => setStatus('idle'), 5000);
   };
 
-  const contactInfo = [
+  const contactInfoCards = [
     {
       icon: MapPin,
       title: 'Address',
-      details: ['123 Luxury Street', 'City Center, State 12345']
+      value: settings?.address || 'Not available'
     },
     {
       icon: Phone,
       title: 'Phone',
-      details: ['+1 (555) 123-4567', '+1 (555) 123-4568']
+      value: settings?.phone || 'Not available'
     },
     {
       icon: Mail,
       title: 'Email',
-      details: ['info@cozyvile.com', 'reservations@cozyvile.com']
+      value: settings?.email || 'Not available'
     },
     {
       icon: Clock,
-      title: 'Front Desk Hours',
-      details: ['24/7 Available', 'Concierge: 7AM - 11PM']
-    }
-  ];
-
-  const directions = [
-    {
-      icon: Car,
-      title: 'By Car',
-      description: 'Free valet parking available. Take Highway 101 to Downtown Exit.'
-    },
-    {
-      icon: Plane,
-      title: 'From Airport',
-      description: 'Complimentary shuttle service available. 25-minute drive from airport.'
+      title: 'Front Desk',
+      value: '24/7 Available'
     }
   ];
 
@@ -95,216 +135,189 @@ const Contact = () => {
         </motion.div>
       </section>
 
-      {/* Contact Form & Info Section */}
-      <section className="py-20 bg-white">
+      {/* Contact Info Cards */}
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            {/* Contact Form */}
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-4 gap-4"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
+            {contactInfoCards.map((card, idx) => (
+              <motion.div key={idx} className="p-4 rounded-lg bg-gray-50 text-center" variants={fadeInUp}>
+                <card.icon className="h-8 w-8 mx-auto text-amber-600 mb-2" />
+                <h3 className="font-semibold text-gray-900">{card.title}</h3>
+                <p className="text-sm text-gray-600 mt-1">{card.value}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Contact Form & Map Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Map */}
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
               variants={fadeInUp}
+              className="rounded-lg overflow-hidden shadow"
             >
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">Get In Touch</h2>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {settings?.map_embed_url ? (
+                <iframe
+                  src={settings.map_embed_url}
+                  width="100%"
+                  height="400"
+                  style={{ border: 0 }}
+                  allowFullScreen={false}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Hotel Location Map"
+                ></iframe>
+              ) : (
+                <div className="h-96 bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-600">Map not available</span>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Contact Form */}
+            <motion.form
+              onSubmit={handleSubmit}
+              className="bg-white p-6 rounded-lg shadow"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeInUp}
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-gray-900">Send us a Message</h2>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name *
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      id="name"
-                      name="name"
+                      name="first_name"
+                      value={form.first_name}
+                      onChange={handleChange}
+                      placeholder="John"
+                      className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
                       required
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                      placeholder="Your full name"
                     />
                   </div>
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                     <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                      placeholder="your.email@example.com"
+                      type="text"
+                      name="last_name"
+                      value={form.last_name}
+                      onChange={handleChange}
+                      placeholder="Doe"
+                      className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                      placeholder="+1 (555) 123-4567"
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      placeholder="john@example.com"
+                      className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
+                      required
                     />
                   </div>
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject *
-                    </label>
-                    <select
-                      id="subject"
-                      name="subject"
-                      required
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
-                    >
-                      <option value="">Select a subject</option>
-                      <option value="reservation">Reservation Inquiry</option>
-                      <option value="event">Event Planning</option>
-                      <option value="dining">Dining Reservation</option>
-                      <option value="feedback">Feedback</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="+1 (555) 123-4567"
+                      className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                    Message *
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    name="subject"
+                    value={form.subject}
+                    onChange={handleChange}
+                    placeholder="How can we help you?"
+                    className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                    className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition"
+                  >
+                    <option>Reservations</option>
+                    <option>Events</option>
+                    <option>Dining</option>
+                    <option>General</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Message <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    id="message"
                     name="message"
+                    value={form.message}
+                    onChange={handleChange}
+                    placeholder="Please tell us how we can assist you..."
+                    rows={5}
+                    className="w-full border boundary-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-600 focus:border-transparent outline-none transition resize-none"
                     required
-                    rows={6}
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors resize-none"
-                    placeholder="Please share your message or inquiry..."
                   ></textarea>
                 </div>
 
+                {status === 'success' && (
+                  <div className="p-4 bg-green-100 text-green-700 rounded-lg">
+                    Thank you! Your message has been sent successfully. We'll get back to you soon.
+                  </div>
+                )}
+
+                {status === 'error' && (
+                  <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+                    {error || 'An error occurred. Please try again.'}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-300 flex items-center justify-center"
+                  disabled={status === 'loading'}
+                  className="w-full bg-amber-600 text-white font-semibold py-3 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
                 >
-                  Send Message <Send className="ml-2 h-5 w-5" />
+                  {status === 'loading' ? 'Sending...' : 'Send Message'}
                 </button>
-              </form>
-            </motion.div>
-
-            {/* Contact Information */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={stagger}
-            >
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">Contact Information</h2>
-              
-              <div className="space-y-8 mb-12">
-                {contactInfo.map((info, index) => (
-                  <motion.div 
-                    key={index}
-                    className="flex items-start space-x-4"
-                    variants={fadeInUp}
-                  >
-                    <div className="bg-amber-100 p-3 rounded-lg">
-                      <info.icon className="h-6 w-6 text-amber-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1">{info.title}</h3>
-                      {info.details.map((detail, detailIndex) => (
-                        <p key={detailIndex} className="text-gray-600">{detail}</p>
-                      ))}
-                    </div>
-                  </motion.div>
-                ))}
               </div>
-
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Directions</h3>
-              <div className="space-y-6">
-                {directions.map((direction, index) => (
-                  <motion.div 
-                    key={index}
-                    className="flex items-start space-x-4"
-                    variants={fadeInUp}
-                  >
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      <direction.icon className="h-6 w-6 text-gray-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-1">{direction.title}</h4>
-                      <p className="text-gray-600">{direction.description}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+            </motion.form>
           </div>
-        </div>
-      </section>
-
-      {/* Map Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-12"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-          >
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Find Us</h2>
-            <p className="text-xl text-gray-600">Located in the heart of the city</p>
-          </motion.div>
-
-          <motion.div 
-            className="bg-gray-300 h-96 rounded-lg flex items-center justify-center"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-          >
-            <div className="text-center text-gray-600">
-              <MapPin className="h-16 w-16 mx-auto mb-4" />
-              <p className="text-lg">Interactive Map</p>
-              <p className="text-sm">Map integration would be implemented here</p>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Emergency Contact */}
-      <section className="py-12 bg-amber-600">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-          >
-            <h3 className="text-2xl font-bold text-white mb-4">24/7 Emergency Contact</h3>
-            <p className="text-amber-100 mb-4">
-              For urgent matters or after-hours assistance, please call our emergency line
-            </p>
-            <a 
-              href="tel:+15551234567" 
-              className="text-2xl font-bold text-white hover:text-amber-200 transition-colors"
-            >
-              +1 (555) 123-4567
-            </a>
-          </motion.div>
         </div>
       </section>
     </div>

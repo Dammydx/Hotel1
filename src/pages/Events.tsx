@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import supabase from '../lib/supabase';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Calendar, MapPin, Mic, Camera, Coffee, Award, Heart } from 'lucide-react';
+import { Users, Award, Heart, Mic } from 'lucide-react';
 
-const Events = () => {
+interface Venue {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  short_description?: string;
+  capacity?: number;
+  is_active: boolean;
+  sort_order: number;
+  venue_images?: Array<{ image_url: string }>;
+}
+
+const Events: React.FC = () => {
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 60 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -15,33 +32,6 @@ const Events = () => {
       }
     }
   };
-
-  const eventSpaces = [
-    {
-      name: 'Grand Ballroom',
-      capacity: 300,
-      size: '500 m²',
-      description: 'Elegant ballroom perfect for weddings, galas, and large corporate events',
-      image: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-      features: ['Crystal Chandeliers', 'Dance Floor', 'Stage Area', 'Premium Audio/Visual']
-    },
-    {
-      name: 'Executive Boardroom',
-      capacity: 20,
-      size: '80 m²',
-      description: 'Professional meeting space with state-of-the-art technology',
-      image: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=800',
-      features: ['Video Conferencing', 'Smart Board', 'High-Speed WiFi', 'Catering Service']
-    },
-    {
-      name: 'Garden Pavilion',
-      capacity: 150,
-      size: '200 m²',
-      description: 'Outdoor venue with beautiful garden views for intimate celebrations',
-      image: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-      features: ['Garden Setting', 'Weather Protection', 'Ambient Lighting', 'Cocktail Area']
-    }
-  ];
 
   const eventTypes = [
     { icon: Heart, title: 'Weddings', description: 'Create magical moments on your special day' },
@@ -60,6 +50,17 @@ const Events = () => {
     'Accommodation Packages',
     'Dedicated Event Manager'
   ];
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from('venues').select('*, venue_images(*)').eq('is_active', true).order('sort_order');
+      if (error) console.error(error);
+      setVenues(data || []);
+      setLoading(false);
+    };
+    fetch();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -93,69 +94,53 @@ const Events = () => {
             viewport={{ once: true }}
             variants={fadeInUp}
           >
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Event Spaces</h2>
-            <p className="text-xl text-gray-600">Versatile venues designed to accommodate any occasion</p>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Venues</h2>
+            <p className="text-xl text-gray-600">Versatile spaces designed to accommodate any occasion</p>
           </motion.div>
 
-          <motion.div 
-            className="space-y-16"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            {eventSpaces.map((space, index) => (
-              <motion.div 
-                key={index}
-                className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${
-                  index % 2 === 1 ? 'lg:grid-flow-col-dense' : ''
-                }`}
-                variants={fadeInUp}
-              >
-                <div className={index % 2 === 1 ? 'lg:col-start-2' : ''}>
-                  <div className="relative h-80 rounded-lg overflow-hidden shadow-xl">
-                    <img 
-                      src={space.image} 
-                      alt={space.name}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                </div>
-
-                <div className={index % 2 === 1 ? 'lg:col-start-1' : ''}>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-4">{space.name}</h3>
-                  <p className="text-lg text-gray-600 mb-6">{space.description}</p>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="flex items-center text-gray-700">
-                      <Users className="h-5 w-5 mr-2 text-amber-600" />
-                      <span>Up to {space.capacity} guests</span>
+          {loading ? (
+            <div className="text-center py-12">Loading venues…</div>
+          ) : (
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={stagger}
+            >
+              {venues.map((venue, idx) => (
+                <motion.div 
+                  key={idx}
+                  className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                  variants={fadeInUp}
+                >
+                  <Link to={`/events/${venue.slug}`} className="block h-80 overflow-hidden">
+                    {venue.venue_images?.[0]?.image_url && (
+                      <img 
+                        src={venue.venue_images[0].image_url}
+                        alt={venue.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                  </Link>
+                  <div className="p-6">
+                    <h3 className="text-2xl font-semibold text-gray-900 mb-2">{venue.name}</h3>
+                    <p className="text-gray-600 mb-4">{venue.short_description}</p>
+                    <div className="flex items-center gap-2 text-gray-700 mb-4">
+                      <Users className="h-5 w-5 text-amber-600" />
+                      <span>Capacity: {venue.capacity} guests</span>
                     </div>
-                    <div className="flex items-center text-gray-700">
-                      <MapPin className="h-5 w-5 mr-2 text-amber-600" />
-                      <span>{space.size}</span>
-                    </div>
+                    <Link 
+                      to={`/events/${venue.slug}`}
+                      className="inline-block bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 transition-colors"
+                    >
+                      View Details
+                    </Link>
                   </div>
-
-                  <div className="mb-6">
-                    <h4 className="font-semibold text-gray-900 mb-3">Features:</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {space.features.map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-center text-sm text-gray-600">
-                          <div className="w-2 h-2 bg-amber-600 rounded-full mr-2"></div>
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300">
-                    Request Quote
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -245,14 +230,12 @@ const Events = () => {
             <p className="text-xl text-amber-100 mb-8">
               Our experienced event team is here to help you create an unforgettable experience
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-amber-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-colors duration-300">
-                Schedule Consultation
-              </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-amber-600 px-8 py-3 rounded-lg font-semibold transition-all duration-300">
-                Download Brochure
-              </button>
-            </div>
+            <Link 
+              to="/contact"
+              className="inline-block bg-white text-amber-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-colors duration-300"
+            >
+              Request a Quote
+            </Link>
           </motion.div>
         </div>
       </section>

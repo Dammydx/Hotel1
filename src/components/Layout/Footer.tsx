@@ -66,10 +66,19 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+        {/* Bottom Section */}
+        <div className="border-t border-gray-800 mt-8 pt-8 text-center space-y-2">
           <p className="text-gray-400">
             © 2024 Cozy Vile Hotel. All rights reserved.
           </p>
+
+          {/* Admin Login Link */}
+          <a
+            href="/adminlogin"
+            className="text-xs text-gray-500 hover:text-amber-600 transition-colors"
+          >
+            Admin Login
+          </a>
         </div>
       </div>
     </footer>

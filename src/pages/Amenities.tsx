@@ -1,17 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Waves, 
-  Dumbbell, 
-  Utensils, 
-  Car, 
-  Briefcase, 
-  Baby, 
-  Shield, 
-  Clock,
-  MapPin,
-  Coffee
-} from 'lucide-react';
+import { Waves, Dumbbell, Utensils, Coffee, Briefcase, Car, Shield, Clock, MapPin } from 'lucide-react';
+import AmenitiesList from './AmenitiesList';
 
 const Amenities = () => {
   const fadeInUp = {
@@ -86,6 +75,17 @@ const Amenities = () => {
           <h1 className="text-5xl md:text-6xl font-bold mb-4">Hotel Amenities</h1>
           <p className="text-xl text-gray-200">Luxury facilities and services at your fingertips</p>
         </motion.div>
+      </section>
+
+      {/* Amenities Page content (fetched) */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">Our Amenities</h2>
+            <p className="text-gray-600">Comfort and convenience during your stay</p>
+          </div>
+          <AmenitiesList />
+        </div>
       </section>
 
       {/* Featured Amenities */}

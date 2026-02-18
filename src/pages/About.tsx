@@ -1,6 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Award, Users, Clock, Heart } from 'lucide-react';
+import Accordion from '../components/Accordion';
 
 const About = () => {
   const fadeInUp = {
@@ -59,6 +59,23 @@ const About = () => {
           <h1 className="text-5xl md:text-6xl font-bold mb-4">About Cozy Vile</h1>
           <p className="text-xl text-gray-200">Our Story of Excellence and Hospitality</p>
         </motion.div>
+      </section>
+
+      {/* FAQ Section (static array) */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
+            <p className="text-gray-600">Helpful answers to common questions</p>
+          </div>
+          <Accordion
+            items={[
+              { question: 'What is the check-in and check-out time?', answer: 'Check-in is from 3:00 PM and check-out is until 12:00 PM. Early check-in/late check-out may be available on request.' },
+              { question: 'Do you offer airport transfers?', answer: 'Yes, we offer airport transfers at an additional cost. Please contact our front desk to arrange transportation.' },
+              { question: 'Is breakfast included with the room rate?', answer: 'Some rates include breakfast. Please check your booking details or contact reservations for options.' }
+            ]}
+          />
+        </div>
       </section>
 
       {/* Our Story Section */}

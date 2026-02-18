@@ -1,9 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Wifi, Car, Coffee, Dumbbell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import supabase from '../lib/supabase';
 
-const Home = () => {
+interface RoomImage {
+  image_url: string;
+}
+
+interface Room {
+  id: string;
+  name: string;
+  slug: string;
+  short_description?: string;
+  room_images?: RoomImage[];
+  price_from?: number;
+}
+
+interface Experience {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  image_url?: string;
+}
+
+interface Testimonial {
+  id: string;
+  guest_name: string;
+  quote: string;
+  rating: number;
+}
+
+const Home: React.FC = () => {
   const fadeInUp = {
     hidden: { opacity: 0, y: 60 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -23,6 +52,22 @@ const Home = () => {
     { icon: Coffee, title: '24/7 Room Service', description: 'Dining at your convenience' },
     { icon: Dumbbell, title: 'Fitness Center', description: 'Modern equipment and facilities' }
   ];
+
+  const [featuredRooms, setFeaturedRooms] = useState<Room[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data: rooms } = await supabase.from('rooms').select('id,name,slug,short_description,price_from,room_images(*)').eq('is_active', true).eq('is_featured', true).order('sort_order');
+      setFeaturedRooms(rooms || []);
+      const { data: ex } = await supabase.from('experiences').select('*').eq('is_active', true).order('sort_order');
+      setExperiences(ex || []);
+      const { data: t } = await supabase.from('testimonials').select('*').eq('is_active', true).order('created_at');
+      setTestimonials(t || []);
+    };
+    fetch();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -109,6 +154,65 @@ const Home = () => {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* Featured Rooms */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold">Featured Rooms</h2>
+            <p className="text-gray-600">Hand-picked rooms for an exceptional stay</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredRooms.map(r => (
+              <div key={r.id} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="h-48 bg-gray-200">
+                  <img src={r.room_images?.[0]?.image_url} alt={r.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="p-4">
+                  <h3 className="text-xl font-semibold">{r.name}</h3>
+                  <p className="text-gray-600 text-sm">{r.short_description}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <Link to={`/rooms/${r.slug}`} className="text-amber-600">View Details</Link>
+                    <div className="font-semibold">From ₦{r.price_from}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Experiences */}
+      <section className="py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {experiences.map((ex) => (
+              <div key={ex.id} className="rounded overflow-hidden shadow">
+                <div className="h-40 bg-cover bg-center" style={{ backgroundImage: `url(${ex.image_url})` }} />
+                <div className="p-4">
+                  <h4 className="font-semibold">{ex.title}</h4>
+                  <p className="text-gray-600 text-sm">{ex.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h3 className="text-2xl font-semibold mb-6 text-center">What Guests Say</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {testimonials.map(t => (
+              <div key={t.id} className="p-4 bg-white rounded shadow">
+                <div className="text-gray-700">“{t.quote}”</div>
+                <div className="mt-3 text-sm text-gray-500">— {t.guest_name}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
