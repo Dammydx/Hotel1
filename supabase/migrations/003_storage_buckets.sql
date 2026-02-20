@@ -21,15 +21,15 @@
 -- 5. Name: "gallery" - Public
 -- 6. (Optional) Name: "amenities" - Public
 
--- Storage policies (run in SQL editor after buckets are created):
--- CREATE POLICY "public_read_rooms" ON storage.objects
---   FOR SELECT USING (bucket_id = 'rooms');
--- 
--- CREATE POLICY "public_read_dining" ON storage.objects
---   FOR SELECT USING (bucket_id = 'dining');
--- 
--- CREATE POLICY "public_read_venues" ON storage.objects
---   FOR SELECT USING (bucket_id = 'venues');
--- 
--- CREATE POLICY "public_read_gallery" ON storage.objects
---   FOR SELECT USING (bucket_id = 'gallery');
+Storage policies (run in SQL editor after buckets are created):
+CREATE POLICY "public_read_rooms" ON storage.objects
+  FOR SELECT USING (bucket_id = 'rooms');
+
+CREATE POLICY "public_read_dining" ON storage.objects
+  FOR SELECT USING (bucket_id = 'dining');
+
+CREATE POLICY "public_read_venues" ON storage.objects
+  FOR SELECT USING (bucket_id = 'venues');
+
+CREATE POLICY "public_read_gallery" ON storage.objects
+  FOR SELECT USING (bucket_id = 'gallery');

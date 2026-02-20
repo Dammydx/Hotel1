@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import supabase, { supabaseServiceRole } from '../../lib/supabase';
+import AdminHeader from '../../components/AdminHeader';
 
 interface SiteSettings {
   id?: string;
@@ -50,7 +51,6 @@ const AdminSettings: React.FC = () => {
       }
       
       const defaultSettings = {
-        id: null,
         hotel_name: 'Cozy Vile Hotel',
         logo_url: '',
         hero_image_url: '',
@@ -65,6 +65,10 @@ const AdminSettings: React.FC = () => {
       };
 
       const mergedSettings = data ? { ...data } : defaultSettings;
+      // ensure no explicit null id is present (prevents DB insert failing when id:null)
+      if (mergedSettings && 'id' in mergedSettings && !mergedSettings.id) {
+        delete (mergedSettings as Record<string, unknown>).id;
+      }
       setForm({ ...mergedSettings });
       setLoading(false);
     };
@@ -92,8 +96,10 @@ const AdminSettings: React.FC = () => {
         const { error } = await supabaseServiceRole.from('site_settings').update(form).eq('id', form.id);
         if (error) throw error;
       } else {
-        // Create new
-        const { error } = await supabaseServiceRole.from('site_settings').insert([form]);
+        // Create new — remove any id property to allow DEFAULT gen_random_uuid()
+        const payload = { ...form } as Record<string, unknown>;
+        if (!payload.id) delete payload.id;
+        const { error } = await supabaseServiceRole.from('site_settings').insert([payload]);
         if (error) throw error;
       }
 
@@ -130,12 +136,13 @@ const AdminSettings: React.FC = () => {
         throw new Error('Service role client not configured');
       }
 
-      const updatedForm = { ...form, admin_password: newPassword };
+      const updatedForm: SiteSettings = { ...form, admin_password: newPassword };
 
       if (form.id) {
         const { error } = await supabaseServiceRole.from('site_settings').update({ admin_password: newPassword }).eq('id', form.id);
         if (error) throw error;
       } else {
+        if (!updatedForm.id) delete updatedForm.id;
         const { error } = await supabaseServiceRole.from('site_settings').insert([updatedForm]);
         if (error) throw error;
       }
@@ -160,7 +167,7 @@ const AdminSettings: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-semibold mb-6">Site Settings</h1>
+      <AdminHeader title="Site Settings" subtitle="Update hotel details, contact info, and site assets." />
 
       <form onSubmit={handleSave} className="bg-white p-6 rounded shadow mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

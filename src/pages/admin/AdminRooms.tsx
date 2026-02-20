@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import supabase, { supabaseServiceRole } from '../../lib/supabase';
 import { uploadToStorage, deleteFromStorage } from '../../lib/storage';
+import AdminHeader from '../../components/AdminHeader';
 
 interface RoomForm {
   name: string;
@@ -55,10 +56,19 @@ const AdminRooms: React.FC = () => {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('rooms').select('id,name,slug,is_active,price_from').order('sort_order');
-      if (error) console.error(error);
-      setRooms((data || []) as RoomListItem[]);
-      setLoading(false);
+      try {
+        if (!supabaseServiceRole) throw new Error('Service role client not configured.');
+        const { data, error } = await supabaseServiceRole.from('rooms').select('id,name,slug,is_active,price_from').order('sort_order');
+        if (error) throw error;
+        setRooms((data || []) as RoomListItem[]);
+      } catch (err) {
+        console.error('Failed to fetch rooms with service role:', err);
+        const { data, error } = await supabase.from('rooms').select('id,name,slug,is_active,price_from').order('sort_order');
+        if (error) console.warn(error);
+        setRooms((data || []) as RoomListItem[]);
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, []);
@@ -111,7 +121,8 @@ const AdminRooms: React.FC = () => {
     } catch (err) {
       const error = err as StorageError;
       console.error(err);
-      alert('Failed to create room: ' + (error.message || err));
+      const msg = (error && error.message) ? error.message : String(err);
+      alert('Failed to create room: ' + msg + '\n\nHint: this usually means Supabase row-level security rejected the insert. Ensure a service role or server-side admin endpoint is used for admin writes, and that VITE_SUPABASE_SERVICE_ROLE_KEY (for local dev) or a server-side SUPABASE_SERVICE_ROLE_KEY (on your host) is configured.');
     } finally {
       setCreating(false);
     }
@@ -136,7 +147,8 @@ const AdminRooms: React.FC = () => {
     } catch (err) {
       const error = err as StorageError;
       console.error(err);
-      alert('Delete failed: ' + (error.message || err));
+      const msg = (error && error.message) ? error.message : String(err);
+      alert('Delete failed: ' + msg + '\n\nHint: ensure your deployment has a server-side service role configured for admin actions.');
     }
   };
 
@@ -172,31 +184,63 @@ const AdminRooms: React.FC = () => {
     } catch (err) {
       const error = err as StorageError;
       console.error(err);
-      alert('Update failed: ' + (error.message || err));
+      const msg = (error && error.message) ? error.message : String(err);
+      alert('Update failed: ' + msg + '\n\nHint: row-level security may be blocking this update. Configure a server-side admin endpoint or supply a service role for administrative writes.');
     }
   };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold">Rooms</h2>
+      <AdminHeader title="Rooms" subtitle="Manage rooms and room images. Use the Create button to add a new room." />
+      <div className="flex items-center justify-between mb-4">
+        <div />
         <button onClick={() => setShowCreate(true)} className="bg-amber-600 text-white px-3 py-2 rounded">Create Room</button>
       </div>
       {showCreate && (
         <form onSubmit={handleCreate} className="mb-6 p-4 border rounded bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input required value={form.name} onChange={(e)=>setForm({...form, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-')})} placeholder="Name" className="border p-2 rounded" />
-            <input value={form.slug} onChange={(e)=>setForm({...form, slug: e.target.value})} placeholder="Slug" className="border p-2 rounded" />
-            <select value={form.type} onChange={(e)=>setForm({...form, type: e.target.value})} className="border p-2 rounded">
-              <option value="room">Room</option>
-              <option value="suite">Suite</option>
-            </select>
-            <input type="number" value={form.price_from} onChange={(e)=>setForm({...form, price_from: Number(e.target.value)})} placeholder="Price from" className="border p-2 rounded" />
-            <input value={form.size} onChange={(e)=>setForm({...form, size: e.target.value})} placeholder="Size" className="border p-2 rounded" />
-            <input type="number" value={form.guests} onChange={(e)=>setForm({...form, guests: Number(e.target.value)})} placeholder="Guests" className="border p-2 rounded" />
-            <input type="number" value={form.beds} onChange={(e)=>setForm({...form, beds: Number(e.target.value)})} placeholder="Beds" className="border p-2 rounded" />
-            <input value={form.short_description} onChange={(e)=>setForm({...form, short_description: e.target.value})} placeholder="Short description" className="border p-2 rounded md:col-span-2" />
-            <textarea value={form.full_description} onChange={(e)=>setForm({...form, full_description: e.target.value})} placeholder="Full description (HTML allowed)" className="border p-2 rounded md:col-span-2" />
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <input required value={form.name} onChange={(e)=>setForm({...form, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-')})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Slug</label>
+              <input value={form.slug} onChange={(e)=>setForm({...form, slug: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Type</label>
+              <select value={form.type} onChange={(e)=>setForm({...form, type: e.target.value})} className="w-full border p-2 rounded">
+                <option value="room">Room</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Price from</label>
+              <input type="number" value={form.price_from} onChange={(e)=>setForm({...form, price_from: Number(e.target.value)})} className="w-full border p-2 rounded" />
+              <p className="text-xs text-gray-400 mt-1">Base price for this room (numbers only)</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Size</label>
+              <input value={form.size} onChange={(e)=>setForm({...form, size: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Guests</label>
+              <input type="number" value={form.guests} onChange={(e)=>setForm({...form, guests: Number(e.target.value)})} className="w-full border p-2 rounded" />
+              <p className="text-xs text-gray-400 mt-1">Maximum number of guests</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Beds</label>
+              <input type="number" value={form.beds} onChange={(e)=>setForm({...form, beds: Number(e.target.value)})} className="w-full border p-2 rounded" />
+              <p className="text-xs text-gray-400 mt-1">Number of beds in this room</p>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Short description</label>
+              <input value={form.short_description} onChange={(e)=>setForm({...form, short_description: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Full description</label>
+              <textarea value={form.full_description} onChange={(e)=>setForm({...form, full_description: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
             <div className="md:col-span-2">
               <label className="block mb-1">Images</label>
               <input type="file" multiple accept="image/*" onChange={(e)=>setFiles(e.target.files)} />
@@ -213,18 +257,45 @@ const AdminRooms: React.FC = () => {
         <form onSubmit={handleUpdate} className="mb-6 p-4 border rounded bg-white">
           <h3 className="font-semibold mb-3">Edit Room</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input required value={editForm.name || ''} onChange={(e)=>setEditForm({...editForm, name: e.target.value, slug: (editForm.slug || '').toString()})} placeholder="Name" className="border p-2 rounded" />
-            <input value={editForm.slug || ''} onChange={(e)=>setEditForm({...editForm, slug: e.target.value})} placeholder="Slug" className="border p-2 rounded" />
-            <select value={editForm.type || 'room'} onChange={(e)=>setEditForm({...editForm, type: e.target.value})} className="border p-2 rounded">
-              <option value="room">Room</option>
-              <option value="suite">Suite</option>
-            </select>
-            <input type="number" value={editForm.price_from || 0} onChange={(e)=>setEditForm({...editForm, price_from: Number(e.target.value)})} placeholder="Price from" className="border p-2 rounded" />
-            <input value={editForm.size || ''} onChange={(e)=>setEditForm({...editForm, size: e.target.value})} placeholder="Size" className="border p-2 rounded" />
-            <input type="number" value={editForm.guests || 1} onChange={(e)=>setEditForm({...editForm, guests: Number(e.target.value)})} placeholder="Guests" className="border p-2 rounded" />
-            <input type="number" value={editForm.beds || 1} onChange={(e)=>setEditForm({...editForm, beds: Number(e.target.value)})} placeholder="Beds" className="border p-2 rounded" />
-            <input value={editForm.short_description || ''} onChange={(e)=>setEditForm({...editForm, short_description: e.target.value})} placeholder="Short description" className="border p-2 rounded md:col-span-2" />
-            <textarea value={editForm.full_description || ''} onChange={(e)=>setEditForm({...editForm, full_description: e.target.value})} placeholder="Full description (HTML allowed)" className="border p-2 rounded md:col-span-2" />
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <input required value={editForm.name || ''} onChange={(e)=>setEditForm({...editForm, name: e.target.value, slug: (editForm.slug || '').toString()})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Slug</label>
+              <input value={editForm.slug || ''} onChange={(e)=>setEditForm({...editForm, slug: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Type</label>
+              <select value={editForm.type || 'room'} onChange={(e)=>setEditForm({...editForm, type: e.target.value})} className="w-full border p-2 rounded">
+                <option value="room">Room</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Price from</label>
+              <input type="number" value={editForm.price_from || 0} onChange={(e)=>setEditForm({...editForm, price_from: Number(e.target.value)})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Size</label>
+              <input value={editForm.size || ''} onChange={(e)=>setEditForm({...editForm, size: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Guests</label>
+              <input type="number" value={editForm.guests || 1} onChange={(e)=>setEditForm({...editForm, guests: Number(e.target.value)})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Beds</label>
+              <input type="number" value={editForm.beds || 1} onChange={(e)=>setEditForm({...editForm, beds: Number(e.target.value)})} className="w-full border p-2 rounded" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Short description</label>
+              <input value={editForm.short_description || ''} onChange={(e)=>setEditForm({...editForm, short_description: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Full description</label>
+              <textarea value={editForm.full_description || ''} onChange={(e)=>setEditForm({...editForm, full_description: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
             <div className="md:col-span-2">
               <label className="block mb-1">Add Images</label>
               <input type="file" multiple accept="image/*" onChange={(e)=>setEditFiles(e.target.files)} />

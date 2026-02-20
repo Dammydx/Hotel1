@@ -91,7 +91,7 @@ const Home: React.FC = () => {
             className="text-5xl md:text-7xl font-bold mb-6"
             variants={fadeInUp}
           >
-            Welcome to <span className="text-amber-400">Cozy Vile</span>
+            Welcome to <span className="text-amber-400">Cozy Ville</span>
           </motion.h1>
           <motion.p 
             className="text-xl md:text-2xl mb-8 text-gray-200"

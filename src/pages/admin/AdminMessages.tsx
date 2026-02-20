@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import supabase, { supabaseServiceRole } from '../../lib/supabase';
+import AdminHeader from '../../components/AdminHeader';
 
 interface ContactMessage {
   id: string;
@@ -22,16 +23,25 @@ const AdminMessages: React.FC = () => {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
-      if (error) console.error(error);
-      setMessages(data || []);
+      try {
+        if (!supabaseServiceRole) throw new Error('Service role client not configured. Admin reads require service role.');
+        const { data, error } = await supabaseServiceRole.from('contact_messages').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setMessages(data || []);
+      } catch (err) {
+        console.error('Failed to fetch contact messages:', err);
+        // fallback: try anon client for public data (may be restricted by RLS)
+        const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+        if (error) console.warn('Anon fetch failed or returned limited data:', error);
+        setMessages(data || []);
+      }
     };
     fetch();
   }, []);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Contact Messages</h2>
+      <AdminHeader title="Contact Messages" subtitle="View and manage incoming contact form messages." />
       <div className="space-y-3">
         {messages.map(m => (
           <div key={m.id} className="p-3 border rounded relative">

@@ -1,5 +1,6 @@
-import React from 'react';
+// import React from 'react';
 import { Hotel, MapPin, Phone, Mail, Facebook, Twitter, Instagram } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -69,16 +70,16 @@ const Footer = () => {
         {/* Bottom Section */}
         <div className="border-t border-gray-800 mt-8 pt-8 text-center space-y-2">
           <p className="text-gray-400">
-            © 2024 Cozy Vile Hotel. All rights reserved.
+            © 2026 Cozy Vile Hotel. All rights reserved.
           </p>
 
           {/* Admin Login Link */}
-          <a
-            href="/adminlogin"
+          <Link
+            to="/adminlogin"
             className="text-xs text-gray-500 hover:text-amber-600 transition-colors"
           >
             Admin Login
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

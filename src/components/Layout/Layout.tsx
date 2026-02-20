@@ -2,6 +2,7 @@ import React from 'react';
 import Navigation from './Navigation';
 import Footer from './Footer';
 import NewsletterBar from './NewsletterBar';
+import ScrollToTopButton from '../ScrollToTopButton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </main>
       <NewsletterBar />
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 };

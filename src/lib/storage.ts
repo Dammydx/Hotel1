@@ -5,7 +5,7 @@ import { supabaseServiceRole } from './supabase';
  * Note: Do NOT expose service role keys in a public build. Use only in trusted server-side contexts.
  */
 export async function uploadToStorage(bucket: string, path: string, file: File | Blob) {
-  if (!supabaseServiceRole) throw new Error('Service role client not configured. Set VITE_SUPABASE_SERVICE_ROLE_KEY in .env for server-side usage only.');
+  if (!supabaseServiceRole) throw new Error('Service role client not configured. To upload files from the admin UI you must configure a server-side service role or set VITE_SUPABASE_SERVICE_ROLE_KEY for local dev (DO NOT expose this key in a public build). See README for deploy instructions.');
   const { data, error } = await supabaseServiceRole.storage.from(bucket).upload(path, file, { cacheControl: '3600', upsert: false });
   if (error) throw error;
   // get public URL
@@ -14,7 +14,7 @@ export async function uploadToStorage(bucket: string, path: string, file: File |
 }
 
 export async function deleteFromStorage(bucket: string, publicUrl: string) {
-  if (!supabaseServiceRole) throw new Error('Service role client not configured.');
+  if (!supabaseServiceRole) throw new Error('Service role client not configured. To delete files please ensure the service role client is configured server-side.');
   // Public URL format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
   const marker = `/storage/v1/object/public/${bucket}/`;
   const idx = publicUrl.indexOf(marker);

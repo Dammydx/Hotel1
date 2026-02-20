@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Layout from './components/Layout/Layout';
 import Home from './pages/Home';
 import About from './pages/About';
@@ -15,6 +16,7 @@ import VenueDetail from './pages/VenueDetail';
 import NotFound from './pages/NotFound';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLayout from './components/Layout/AdminLayout';
 import AdminRooms from './pages/admin/AdminRooms';
 import AdminAmenities from './pages/admin/AdminAmenities';
 import AdminDining from './pages/admin/AdminDining';
@@ -28,6 +30,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Layout>
         <Suspense>
           <Routes>
@@ -45,22 +48,17 @@ function App() {
 
             {/* Admin routes */}
             <Route path="/adminlogin" element={<AdminLogin />} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/admin/rooms" element={<ProtectedRoute><AdminRooms /></ProtectedRoute>} />
-            <Route path="/admin/amenities" element={<ProtectedRoute><AdminAmenities /></ProtectedRoute>} />
-            <Route path="/admin/dining" element={<ProtectedRoute><AdminDining /></ProtectedRoute>} />
-            <Route path="/admin/venues" element={<ProtectedRoute><AdminVenues /></ProtectedRoute>} />
-            <Route path="/admin/gallery" element={<ProtectedRoute><AdminGallery /></ProtectedRoute>} />
-            <Route path="/admin/testimonials" element={<ProtectedRoute><AdminTestimonials /></ProtectedRoute>} />
-            <Route path="/admin/messages" element={<ProtectedRoute><AdminMessages /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="rooms" element={<AdminRooms />} />
+              <Route path="amenities" element={<AdminAmenities />} />
+              <Route path="dining" element={<AdminDining />} />
+              <Route path="venues" element={<AdminVenues />} />
+              <Route path="gallery" element={<AdminGallery />} />
+              <Route path="testimonials" element={<AdminTestimonials />} />
+              <Route path="messages" element={<AdminMessages />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

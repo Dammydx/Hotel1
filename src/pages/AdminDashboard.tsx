@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import AdminHeader from '../components/AdminHeader';
 
 const AdminDashboard: React.FC = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-semibold mb-4">Admin Dashboard</h1>
-      <p className="text-gray-600 mb-6">Scaffolded admin area. Use links below to manage content.</p>
+      <AdminHeader title="Admin Dashboard" subtitle="Overview and quick links to manage site content. Ensure service role env vars are configured for admin writes." />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link to="/admin/rooms" className="p-4 border rounded hover:shadow">Rooms</Link>
         <Link to="/admin/amenities" className="p-4 border rounded hover:shadow">Amenities</Link>

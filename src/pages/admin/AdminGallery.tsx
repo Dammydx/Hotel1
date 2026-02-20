@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import supabase, { supabaseServiceRole } from '../../lib/supabase';
 import { uploadToStorage } from '../../lib/storage';
+import AdminHeader from '../../components/AdminHeader';
 
 interface GalleryItem {
   id: string;
@@ -24,9 +25,17 @@ const AdminGallery: React.FC = () => {
 
   useEffect(() => {
     const fetch = async () => {
-      const { data, error } = await supabase.from('gallery_images').select('*').order('sort_order');
-      if (error) console.error(error);
-      setItems(data || []);
+      try {
+        if (!supabaseServiceRole) throw new Error('Service role client not configured.');
+        const { data, error } = await supabaseServiceRole.from('gallery_images').select('*').order('sort_order');
+        if (error) throw error;
+        setItems(data || []);
+      } catch (err) {
+        console.error('Failed to fetch gallery images with service role:', err);
+        const { data, error } = await supabase.from('gallery_images').select('*').order('sort_order');
+        if (error) console.warn(error);
+        setItems(data || []);
+      }
     };
     fetch();
   }, []);
@@ -58,22 +67,32 @@ const AdminGallery: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold">Gallery</h2>
+      <AdminHeader title="Gallery" subtitle="Manage gallery images and categories." />
+      <div className="flex items-center justify-between mb-4">
+        <div />
         <button onClick={() => setShowUpload(true)} className="bg-amber-600 text-white px-3 py-2 rounded">Upload Image</button>
       </div>
 
       {showUpload && (
         <form onSubmit={handleUpload} className="mb-6 p-4 border rounded bg-white">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input required value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Title" className="border p-2 rounded md:col-span-2" />
-            <select value={category} onChange={(e)=>setCategory(e.target.value)} className="border p-2 rounded">
-              <option value="rooms">Rooms</option>
-              <option value="dining">Dining</option>
-              <option value="amenities">Amenities</option>
-              <option value="events">Events</option>
-            </select>
-            <input type="file" accept="image/*" onChange={(e)=>setFile(e.target.files?.[0] || null)} className="md:col-span-3" />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Title</label>
+              <input required value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select value={category} onChange={(e)=>setCategory(e.target.value)} className="w-full border p-2 rounded">
+                <option value="rooms">Rooms</option>
+                <option value="dining">Dining</option>
+                <option value="amenities">Amenities</option>
+                <option value="events">Events</option>
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="block text-sm font-medium mb-1">Image</label>
+              <input type="file" accept="image/*" onChange={(e)=>setFile(e.target.files?.[0] || null)} className="w-full" />
+            </div>
           </div>
           <div className="flex gap-2 mt-3">
             <button disabled={uploading} type="submit" className="bg-amber-600 text-white px-3 py-2 rounded">{uploading ? 'Uploading...' : 'Upload'}</button>
